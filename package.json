@@ -1,0 +1,16 @@
+{
+  "name": "tinyorm",
+  "version": "1.0.0",
+  "description": "Micro ORM layer for Sqlite3-powered micro-apps",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "Corey Sharrah <corey@eviltreehouse.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "mocha": "^5.1.1",
+    "simple-assert": "^1.0.0",
+    "sqlite3": "^4.0.0"
+  }
+}
