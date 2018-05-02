@@ -1,6 +1,6 @@
 {
   "name": "tinyorm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Micro ORM layer for Sqlite3-powered micro-apps",
   "main": "index.js",
   "scripts": {
