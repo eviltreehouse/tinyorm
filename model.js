@@ -260,6 +260,9 @@ TinyORM.Where = function(criteria, opts) {
     if (! criteria) criteria = {};
     if (! opts) opts = {};
 
+    // infer limit if we only care about the 1st record.
+    if (opts.first) opts.limit = 1;
+
     var _db = this._db;
     var table = this.Table();
 
@@ -307,7 +310,11 @@ TinyORM.Where = function(criteria, opts) {
                 results.push(m);
             }
 
-            if (opts.first && results.length > 0) return resolve(results[0]);
+            if (opts.first) {
+                if (results.length > 0) resolve(results[0]);
+                else resolve(null);
+                return;
+            }
 
             return resolve(results);
         });
