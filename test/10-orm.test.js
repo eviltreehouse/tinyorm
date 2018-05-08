@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('simple-assert');
 const assert_obj = require('./helpers/assert-obj');
-
+const assert_records = require('./helpers/assert-records');
 const SchemaBuilder = require('./helpers/schema-builder');
 const NewDb = require('./helpers/ram-db');
 const fs = require('fs');
@@ -105,10 +105,92 @@ describe("ORM Testing", () => {
             }, done);
         });
 
-        it("SELECT: Where basic");
-        it("SELECT: Where complex");
+        it("SELECT: Where basic", (done) => {
+            Demo.Where({'tag': 'sel1'}).then((recs) => {
+                try {
+                    assert_records(recs, 'tag', ['sel1']);
+                    done();
+                } catch(e) {
+                    done(e);
+                }
+            }, done);
+        });
 
-        it("UPDATE");
+        it("SELECT: Where basic 2", (done) => {
+            Demo.Where({'completed_dt': null}, { 'order_by': 'pct_done' }).then((recs) => {
+                try {
+                    assert_records(recs, 'tag', ['sel1', 'sel2', 'del1']);
+                    done();
+                } catch(e) {
+                    done(e);
+                }
+            }, done);
+        });        
+
+        it("SELECT: Where basic 3", (done) => {
+            Demo.Where({}, { 'first': true, 'order_by': 'tag' }).then((rec) => {
+                try {
+                    assert(rec.val('tag') == 'del1');
+                    done();
+                } catch(e) {
+                    done(e);
+                }
+            }, done);
+        });        
+        
+
+        it("SELECT: Where complex", (done) => {
+            Demo.Where({'completed_dt': [ 'completed_dt IS NOT NULL'] }, {'order_by': 'tag'}).then((recs) => {
+                try {
+                    assert_records(recs, 'tag', ['selz']);
+                    done();
+                } catch(e) {
+                    done(e);
+                }
+            }, done);            
+        });
+
+        it("SELECT: Where complex 2", (done) => {
+            Demo.Where({'completed_dt': [ 'completed_dt >= :min_comp AND completed_dt < :max_comp', 
+                { ':min_comp': 0, ':max_comp': 999999999999999 }] 
+            }, {'order_by': 'tag'}).then((recs) => {
+                try {
+                    assert_records(recs, 'tag', ['selz']);
+                    done();
+                } catch(e) {
+                    done(e);
+                }
+            }, done);            
+        });        
+
+        it("UPDATE", (done) => {
+            Demo.Where({'tag': 'sel1'}, { 'first': true }).then((rec) => {
+                try {
+                    assert(rec);
+                    var upd = { 'pct_done': 100, 'completed_dt': Math.floor(Date.now() / 1000) };
+                    rec.update(upd).then((urec) => {
+                        try {
+                            Demo.Where({'tag': 'sel1'}, { 'first': true }).then((rec) => {
+                                try {
+                                    assert(rec);
+
+                                    assert(rec.val('pct_done') == 100);
+                                    assert(rec.val('completed_dt') > 0);
+
+                                    done();
+                                } catch(e) {
+                                    done(e);
+                                }    
+                            });
+                        } catch(e) {
+                            done(e);
+                        }
+                    });
+                } catch(e) {
+                    done(e);
+                }
+            }, done);            
+        });
 
         it("DELETE", (done) => {
             Demo.Where({ 'tag': 'del1' }).then((rows) => {

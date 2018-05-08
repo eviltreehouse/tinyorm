@@ -89,9 +89,9 @@ class TinyORM {
     }
 
     /**
-     * Performs an UPDATE on the model; optionally setting values provided
+     * Performs an UPDATE on the model with the values provided
      * in `v` object prior.
-     * @param {Object.<string, any>} [v] 
+     * @param {Object.<string, any>} v
      * @return {Promise<TinyORM>}
      */
     update(v) {
