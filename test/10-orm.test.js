@@ -136,9 +136,8 @@ describe("ORM Testing", () => {
                     done(e);
                 }
             }, done);
-        });        
+        });
         
-
         it("SELECT: Where complex", (done) => {
             Demo.Where({'completed_dt': [ 'completed_dt IS NOT NULL'] }, {'order_by': 'tag'}).then((recs) => {
                 try {
@@ -162,6 +161,43 @@ describe("ORM Testing", () => {
                 }
             }, done);            
         });        
+
+        it("SELECT: Aggregates", (done) => {
+            Demo.Gather({'pct_done': ['avg', 'avg_done']}, { 'by': null }).then((results) => {
+                try {
+                    assert(results ? true : false);
+                    assert(results.avg_done > 0);
+                    done();
+                } catch(e) {
+                    done(e);
+                }
+            }, done);
+        });
+
+        it("SELECT: Aggregates 2", (done) => {
+            Demo.Gather({'pct_done': ['avg', 'avg_done']}, { 'by': null, 'where': { 'pct_done': [ 'pct_done > 90.0' ] } }).then((results) => {
+                try {
+                    assert(results ? true : false);
+                    assert(results.avg_done > 99.0);
+                    done();
+                } catch(e) {
+                    done(e);
+                }
+            }, done);
+        });        
+
+        it("SELECT: Aggregates 3", (done) => {
+            Demo.Gather({'pct_done': ['avg', 'avg_done']}, { 'by': 'demo_class' }).then((results) => {
+                try {
+                    assert(results ? true : false);
+                    assert(results.length == 2);
+
+                    done();
+                } catch(e) {
+                    done(e);
+                }
+            }, done);
+        });            
 
         it("UPDATE", (done) => {
             Demo.Where({'tag': 'sel1'}, { 'first': true }).then((rec) => {

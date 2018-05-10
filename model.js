@@ -249,6 +249,64 @@ TinyORM.Find  = function(id) {
 }
 
 /**
+ * Perform some aggregate queries on the model table. Will the results
+ * as standard objects per the `agrs` and `opts` passed.
+ * @param {Object.<string, any>} agrs 
+ * @param {Object.<string, any>} [opts] 
+ * @return {Promise<Object[]>}
+ */
+TinyORM.Gather = function(agrs, opts) {
+    if (! this._db) return Promise.reject('no_db');
+    if (! this.Table()) return Promise.reject('no_tbl');
+    
+    if (! opts) opts = {};
+    var group_by = opts.by ? "GROUP BY " + safe_col(opts.by) : "";
+
+    var aggs = [];
+    var binds = {};
+
+    var agg_string = '', crit_string = '';
+
+    if (opts.where && typeof opts.where == 'object') {
+        var cr = build_crit(opts.where);
+        binds = cr.binds;
+        crit_string = `WHERE ${cr.where}`;
+    }
+
+    for (var col in agrs) {
+        if (! agrs[col]) continue; // null?
+
+        if (typeof agrs[col] == 'string') {
+            // run an aggregate 
+            var f = agrs[col].toUpperCase();
+            var scol = safe_col(col);
+            aggs.push(`${f}(${scol}) ${scol}`)
+
+        } else if (typeof agrs[col] == 'object') {
+            // run as aggregate and rename
+            var f = agrs[col][0].toUpperCase();
+            var scol = safe_col(col);
+            var alias_col = safe_col(agrs[col][1]);
+            aggs.push(`${f}(${scol}) ${alias_col}`)
+        }
+    }
+
+    agg_string = aggs.join(", ");
+
+    var query = `SELECT ${agg_string} FROM ${this.Table()} ${crit_string} ${group_by}`;
+
+    return new Promise((resolve, reject) => {
+        this._db.all(query, binds, (err, rows) => {
+            if (err) return reject(err);
+            if (! rows) return resolve([]);
+
+            // If we didn't pass a GROUP BY clause, we should get a single row back...
+            return resolve(opts.by ? rows : rows[0]);
+        });
+    });       
+};
+
+/**
  * Performs a SELECT against the provided `criteria`, with the optional query `opts`
  * @param {Object.<string, any>} [criteria] 
  * @param {Object.<string, any>} [opts] 
@@ -269,23 +327,10 @@ TinyORM.Where = function(criteria, opts) {
     var binds = {};
     var query = `SELECT * FROM ${table}`;
     if (Object.keys(criteria).length > 0) {
-        var crit_string = [];
-        for (var k in criteria) {
-            if (criteria[k] === null) {
-                crit_string.push( `${k} IS NULL` );
-            } else if (typeof criteria[k] === 'object') {
-                // raw injection (use with care!)
-                crit_string.push(criteria[k][0]);
-                if (criteria[k][1]) {
-                    for (var rk in criteria[k][1]) binds[ `${rk}`] = criteria[k][1][rk];
-                }
-            } else {
-                crit_string.push( [k, `$${k}`].join("=") );
-                binds[ `$${k}` ] = criteria[k];
-            }
-        }
+        var cr = build_crit(criteria);
         
-        query += " WHERE " + crit_string.join(" AND ");
+        query += " WHERE " + cr.where;
+        binds = cr.binds;
     }
 
     if (typeof opts.order_by == 'string') {
@@ -353,5 +398,45 @@ TinyORM.Scope = function(scope) {
     scope._models = {};
     return scope;
 };
+
+/**
+ * Wash provided variable for use as a column reference
+ * @param {string} v 
+ * @return {string}
+ */
+function safe_col(v) {
+    return v.replace(/[^A-Za-z0-9\_\.]/g, '');
+}
+
+/**
+ * Accept a `criteria` definition object, and returns an object
+ * with a `.where` string property and a `.binds` Object.
+ * @param {Object.<string, any>} criteria 
+ * @return {Object}
+ */
+function build_crit(criteria) {
+    var crit_string = [];
+    var binds = {};
+
+    for (var k in criteria) {
+        if (criteria[k] === null) {
+            crit_string.push( `${k} IS NULL` );
+        } else if (typeof criteria[k] === 'object') {
+            // raw injection (use with care!)
+            crit_string.push(criteria[k][0]);
+            if (criteria[k][1]) {
+                for (var rk in criteria[k][1]) binds[ `${rk}`] = criteria[k][1][rk];
+            }
+        } else {
+            crit_string.push( [k, `$${k}`].join("=") );
+            binds[ `$${k}` ] = criteria[k];
+        }
+    }
+    
+    return {
+        'where': crit_string.join(" AND "),
+        'binds': binds
+    };
+}
 
 module.exports = TinyORM;
